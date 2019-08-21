@@ -13,17 +13,12 @@ class DocoptConan(ConanFile):
     options = {"shared": [True, False]}
     default_options = "shared=False"
     generators = "cmake"
-
-    def source(self):
-        self.run("git clone https://github.com/BlueSolei/docopt.cpp docopt")
-        self.run("cd docopt && git checkout conan")
-        # This small hack might be useful to guarantee proper /MT /MD linkage
-        # in MSVC if the packaged project doesn't have variables to set it
-        # properly
-        #tools.replace_in_file("hello/CMakeLists.txt", "PROJECT(MyHello)",
-#                              '''PROJECT(MyHello)
-#include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-#conan_basic_setup()''')
+    scm = {
+        "type": "git",
+        "subfolder": "docopt",
+        "url": "auto",
+        "revision": "auto"
+    }
 
     def build(self):
         cmake = CMake(self)
