@@ -19,7 +19,7 @@ namespace docopt {
 
 	/// A generic type to hold the various types that can be produced by docopt.
 	///
-	/// This type can be one of: {bool, long, string, vector<string>}, or empty.
+	/// This type can be one of: {bool, long, float, string, vector<string>}, or empty.
 	struct value {
 		/// An empty value
 		value() {}
@@ -29,6 +29,7 @@ namespace docopt {
 		
 		explicit value(bool);
 		explicit value(long);
+		explicit value(float);
 		explicit value(int v) : value(static_cast<long>(v)) {}
 
 		~value();
@@ -44,11 +45,13 @@ namespace docopt {
 		bool isBool()       const { return kind==Kind::Bool; }
 		bool isString()     const { return kind==Kind::String; }
 		bool isLong()       const { return kind==Kind::Long; }
+		bool isFloat()		const { return kind == Kind::Float; }
 		bool isStringList() const { return kind==Kind::StringList; }
 
 		// Throws std::invalid_argument if the type does not match
 		bool asBool() const;
 		long asLong() const;
+		float asFloat() const;
 		std::string const& asString() const;
 		std::vector<std::string> const& asStringList() const;
 
@@ -63,6 +66,7 @@ namespace docopt {
 			Empty,
 			Bool,
 			Long,
+			Float,
 			String,
 			StringList
 		};
@@ -73,6 +77,7 @@ namespace docopt {
 			
 			bool boolValue;
 			long longValue;
+			float floatValue;
 			std::string strValue;
 			std::vector<std::string> strList;
 		};
@@ -82,6 +87,7 @@ namespace docopt {
 				case Kind::Empty: return "empty";
 				case Kind::Bool: return "bool";
 				case Kind::Long: return "long";
+				case Kind::Float: return "float";
 				case Kind::String: return "string";
 				case Kind::StringList: return "string-list";
 			}
@@ -133,6 +139,13 @@ namespace docopt {
 	}
 
 	inline
+	value::value(float v)
+		: kind(Kind::Float)
+	{
+		variant.floatValue = v;
+	}
+
+	inline
 	value::value(std::string v)
 	: kind(Kind::String)
 	{
@@ -167,6 +180,10 @@ namespace docopt {
 				variant.longValue = other.variant.longValue;
 				break;
 
+			case Kind::Float:
+				variant.floatValue = other.variant.floatValue;
+				break;
+
 			case Kind::Empty:
 			default:
 				break;
@@ -194,6 +211,10 @@ namespace docopt {
 				variant.longValue = other.variant.longValue;
 				break;
 
+			case Kind::Float:
+				variant.floatValue = other.variant.floatValue;
+				break;
+
 			case Kind::Empty:
 			default:
 				break;
@@ -215,6 +236,7 @@ namespace docopt {
 			case Kind::Empty:
 			case Kind::Bool:
 			case Kind::Long:
+			case Kind::Float:
 			default:
 				// trivial dtor
 				break;
@@ -261,6 +283,9 @@ namespace docopt {
 			case Kind::Long:
 				return std::hash<long>()(variant.longValue);
 
+			case Kind::Float:
+				return std::hash<float>()(variant.floatValue);
+
 			case Kind::Empty:
 			default:
 				return std::hash<void*>()(nullptr);
@@ -290,6 +315,24 @@ namespace docopt {
 		}
 		throwIfNotKind(Kind::Long);
 		return variant.longValue;
+	}
+
+	inline
+	float value::asFloat() const
+	{
+		// Attempt to convert a string to a long
+		if (kind == Kind::String) {
+			const std::string& str = variant.strValue;
+			std::size_t pos;
+			const float ret = stof(str, &pos); // Throws if it can't convert
+			if (pos != str.length()) {
+				// The string ended in non-digits.
+				throw std::runtime_error(str + " contains non-numeric characters.");
+			}
+			return ret;
+		}
+		throwIfNotKind(Kind::Float);
+		return variant.floatValue;
 	}
 
 	inline
@@ -324,6 +367,9 @@ namespace docopt {
 
 			case value::Kind::Long:
 				return v1.variant.longValue==v2.variant.longValue;
+
+			case value::Kind::Float:
+				return v1.variant.floatValue==v2.variant.floatValue;
 
 			case value::Kind::Empty:
 			default:
